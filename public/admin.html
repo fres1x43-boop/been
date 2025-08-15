@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Админ-панель</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    .question {
+      margin-bottom: 20px;
+      padding: 15px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+    }
+    textarea {
+      width: 100%;
+      height: 100px;
+      margin-bottom: 10px;
+    }
+    button {
+      background: #28a745;
+      color: white;
+      border: none;
+      padding: 8px 12px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <h1>Админ-панель</h1>
+  <div id="questions-list"></div>
+
+  <script>
+    const ADMIN_TOKEN = 'YOUR_SECRET_ADMIN_TOKEN';
+    
+    document.addEventListener('DOMContentLoaded', function() {
+      loadUnansweredQuestions();
+    });
+    
+    function loadUnansweredQuestions() {
+      fetch('/questions')
+        .then(response => response.json())
+        .then(questions => {
+          const container = document.getElementById('questions-list');
+          container.innerHTML = '';
+          
+          const unanswered = questions.filter(q => !q.answer);
+          
+          if (unanswered.length === 0) {
+            container.innerHTML = '<p>Нет неотвеченных вопросов.</p>';
+            return;
+          }
+          
+          unanswered.forEach(q => {
+            const div = document.createElement('div');
+            div.className = 'question';
+            div.innerHTML = `
+              <p><strong>Вопрос #${q.id}</strong></p>
+              <p>${q.question}</p>
+              <p><small>Задан: ${new Date(q.created_at).toLocaleString()}</small></p>
+              <textarea id="answer-${q.id}" placeholder="Ваш ответ..."></textarea>
+              <button onclick="answerQuestion(${q.id})">Ответить</button>
+            `;
+            container.appendChild(div);
+          });
+        });
+    }
+    
+    function answerQuestion(questionId) {
+      const answer = document.getElementById(`answer-${questionId}`).value.trim();
+      
+      if (!answer) {
+        alert('Пожалуйста, введите ответ');
+        return;
+      }
+      
+      fetch('/answer', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Admin-Token': ADMIN_TOKEN
+        },
+        body: JSON.stringify({
+          id: questionId,
+          answer: answer
+        })
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          alert('Ответ сохранен!');
+          loadUnansweredQuestions();
+        } else {
+          alert('Ошибка при сохранении ответа');
+        }
+      })
+      .catch(error => {
+        alert('Ошибка: ' + error.message);
+      });
+    }
+    
+    // Делаем функцию доступной глобально
+    window.answerQuestion = answerQuestion;
+  </script>
+</body>
+</html>
