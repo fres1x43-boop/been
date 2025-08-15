@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Анонимные вопросы</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      line-height: 1.6;
+    }
+    .question-form {
+      margin-bottom: 30px;
+    }
+    textarea {
+      width: 100%;
+      height: 100px;
+      margin-bottom: 10px;
+    }
+    button {
+      background: #007bff;
+      color: white;
+      border: none;
+      padding: 10px 15px;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #0056b3;
+    }
+    .questions-list {
+      margin-top: 30px;
+    }
+    .question {
+      border-bottom: 1px solid #eee;
+      padding: 15px 0;
+    }
+    .question-time {
+      color: #666;
+      font-size: 0.9em;
+    }
+    .answer {
+      background: #f9f9f9;
+      padding: 10px;
+      margin-top: 10px;
+      border-left: 3px solid #007bff;
+    }
+  </style>
+</head>
+<body>
+  <h1>Анонимные вопросы</h1>
+  
+  <div class="question-form">
+    <h2>Задать вопрос</h2>
+    <textarea id="question-text" placeholder="Ваш вопрос..."></textarea>
+    <button id="ask-button">Отправить</button>
+    <p id="status-message"></p>
+  </div>
+  
+  <div class="questions-list">
+    <h2>Вопросы и ответы</h2>
+    <div id="questions-container"></div>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const askButton = document.getElementById('ask-button');
+      const questionText = document.getElementById('question-text');
+      const statusMessage = document.getElementById('status-message');
+      const questionsContainer = document.getElementById('questions-container');
+      
+      // Загрузка вопросов при загрузке страницы
+      loadQuestions();
+      
+      // Отправка вопроса
+      askButton.addEventListener('click', function() {
+        const question = questionText.value.trim();
+        
+        if (!question) {
+          statusMessage.textContent = 'Пожалуйста, введите вопрос';
+          statusMessage.style.color = 'red';
+          return;
+        }
+        
+        fetch('/ask', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: `question=${encodeURIComponent(question)}`
+        })
+        .then(response => response.json())
+        .then(data => {
+          if (data.success) {
+            statusMessage.textContent = 'Ваш вопрос отправлен!';
+            statusMessage.style.color = 'green';
+            questionText.value = '';
+            loadQuestions();
+          } else {
+            statusMessage.textContent = 'Ошибка при отправке вопроса';
+            statusMessage.style.color = 'red';
+          }
+        })
+        .catch(error => {
+          statusMessage.textContent = 'Ошибка: ' + error.message;
+          statusMessage.style.color = 'red';
+        });
+      });
+      
+      // Загрузка списка вопросов
+      function loadQuestions() {
+        fetch('/questions')
+          .then(response => response.json())
+          .then(questions => {
+            questionsContainer.innerHTML = '';
+            
+            if (questions.length === 0) {
+              questionsContainer.innerHTML = '<p>Пока нет вопросов.</p>';
+              return;
+            }
+            
+            questions.forEach(q => {
+              const questionDiv = document.createElement('div');
+              questionDiv.className = 'question';
+              
+              const questionText = document.createElement('p');
+              questionText.textContent = q.question;
+              
+              const questionTime = document.createElement('div');
+              questionTime.className = 'question-time';
+              questionTime.textContent = 'Задан: ' + new Date(q.created_at).toLocaleString();
+              
+              questionDiv.appendChild(questionText);
+              questionDiv.appendChild(questionTime);
+              
+              if (q.answer) {
+                const answerDiv = document.createElement('div');
+                answerDiv.className = 'answer';
+                answerDiv.innerHTML = `<p>${q.answer}</p>`;
+                
+                const answerTime = document.createElement('div');
+                answerTime.className = 'question-time';
+                answerTime.textContent = 'Ответ дан: ' + new Date(q.answered_at).toLocaleString();
+                
+                answerDiv.appendChild(answerTime);
+                questionDiv.appendChild(answerDiv);
+              }
+              
+              questionsContainer.appendChild(questionDiv);
+            });
+          })
+          .catch(error => {
+            console.error('Error loading questions:', error);
+          });
+      }
+    });
+  </script>
+</body>
+</html>
